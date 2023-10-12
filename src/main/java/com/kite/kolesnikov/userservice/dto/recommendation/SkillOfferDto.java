@@ -1,4 +1,4 @@
-package com.kite.kolesnikov.userservice.dto;
+package com.kite.kolesnikov.userservice.dto.recommendation;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

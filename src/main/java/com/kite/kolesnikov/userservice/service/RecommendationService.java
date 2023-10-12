@@ -1,7 +1,7 @@
 package com.kite.kolesnikov.userservice.service;
 
-import com.kite.kolesnikov.userservice.dto.RecommendationDto;
-import com.kite.kolesnikov.userservice.dto.SkillOfferDto;
+import com.kite.kolesnikov.userservice.dto.recommendation.SkillOfferDto;
+import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
 import com.kite.kolesnikov.userservice.entity.Skill;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
 import com.kite.kolesnikov.userservice.entity.recommendation.SkillOffer;
@@ -11,6 +11,7 @@ import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
 import com.kite.kolesnikov.userservice.repository.UserSkillGuaranteeRepository;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
+import com.kite.kolesnikov.userservice.repository.recommendation.SkillOfferRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +30,10 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class RecommendationService {
-
     private static final int RECOMMENDATION_INTERVAL_MONTHS = 6;
 
     private final RecommendationRepository recommendationRepository;
+    private final SkillOfferRepository skillOfferRepository;
     private final RecommendationMapper recommendationMapper;
     private final SkillService skillService;
     private final UserService userService;
@@ -40,19 +41,19 @@ public class RecommendationService {
 
     @Transactional
     public RecommendationDto create(RecommendationDto recommendationDto) {
-        validate(recommendationDto);
+        validateOnCreat(recommendationDto);
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
-        recommendationRepository.save(recommendation);
-        processSkillOffers(recommendation);
+        Recommendation save = recommendationRepository.save(recommendation);
+//        processSkillOffers(save, recommendationDto.getSkillOffers());
 
         return recommendationMapper.toDto(recommendation);
     }
 
+
     @Transactional
     public RecommendationDto update(RecommendationDto recommendationDto, long recommendationId) {
-        validateRecommendationExists(recommendationId);
-        validate(recommendationDto);
+        validateOnUpdate(recommendationDto, recommendationId);
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
         recommendationRepository.save(recommendation);
@@ -67,7 +68,7 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllUserRecommendations(long receiverId, int pageNumber, int pageSize) {
+    public Page<RecommendationDto> getAllReceivedRecommendations(long receiverId, int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Recommendation> receiverRecommendations = recommendationRepository.findAllByReceiverId(receiverId, pageable);
 
@@ -85,16 +86,15 @@ public class RecommendationService {
     private void processSkillOffers(Recommendation recommendation) {
         long userId = recommendation.getReceiver().getId();
         long authorId = recommendation.getAuthor().getId();
-        List<SkillOffer> skillOffers = recommendation.getSkillOffers();
         List<Skill> userSkills = getUserSkills(userId);
 
-        for (SkillOffer skillOffer : skillOffers) {
+        for (SkillOffer skillOffer : recommendation.getSkillOffers()) {
             long skillId = skillOffer.getSkill().getId();
 
             if (userSkills.contains(skillOffer.getSkill()) && guaranteeNotExist(userId, skillId, authorId)) {
                 saveUserSkillGuarantee(userId, skillId, authorId);
             } else {
-                skillService.saveSkillOffer(skillOffer);
+                skillOfferRepository.save(skillOffer);
             }
         }
     }
@@ -121,11 +121,31 @@ public class RecommendationService {
         return !userSkillGuaranteeRepository.existsByUserIdAndSkillIdAndGuarantorId(userId, skillId, guarantorId);
     }
 
-    private void validate(RecommendationDto recommendationDto) {
-        Set<SkillOfferDto> skills = recommendationDto.getSkillOffers();
+    private Recommendation getLastRecommendation(long authorId, long receiverId) {
+        return recommendationRepository.findFirstByAuthorIdAndReceiverIdOrderByCreatedAtDesc(authorId, receiverId)
+                .orElseThrow(() -> {
+                    String errorMessage = MessageFormat.format(
+                            "User {0} hasn't given any recommendation to user {1}", authorId, receiverId);
+                    log.error(errorMessage);
+                    return new EntityNotFoundException(errorMessage);
+                });
+    }
 
+    private void validateOnUpdate(RecommendationDto recommendationDto, long recommendationId) {
+        validateRecommendationExist(recommendationId);
+
+        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
+        if (skillOffers == null || skillOffers.isEmpty()) {
+            validateSkillOffers(skillOffers);
+        }
+    }
+
+    private void validateOnCreat(RecommendationDto recommendationDto) {
         validateLastUpdate(recommendationDto);
-        validateSkillsAreInRepository(skills);
+
+        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
+        validateSkillOffers(skillOffers);
+        validateSkillsExist(skillOffers);
     }
 
     private void validateLastUpdate(RecommendationDto recommendationDto) {
@@ -140,38 +160,30 @@ public class RecommendationService {
             String errorMessage = MessageFormat.format(
                     "You've already recommended the {0} user in the last {1} months",
                     receiverId, RECOMMENDATION_INTERVAL_MONTHS);
-
+            log.error("User {} already recommended user {} in the last {} months",
+                    authorId, receiverId, RECOMMENDATION_INTERVAL_MONTHS);
             throw new DataValidationException(errorMessage);
         }
-
     }
 
-    private Recommendation getLastRecommendation(long authorId, long receiverId) {
-        return recommendationRepository.findFirstByAuthorIdAndReceiverIdOrderByCreatedAtDesc(authorId, receiverId)
-                .orElseThrow(() -> {
-                    String errorMessage = MessageFormat.format("User {0} hasn't given any recommendation to user {1}", authorId, receiverId);
-                    log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
-                });
-    }
-
-    private void validateSkillsAreInRepository(Set<SkillOfferDto> skills) {
-        for (SkillOfferDto skill : skills) {
-            Long skillId = skill.getSkillId();
-
-            if (!skillService.existsById(skillId)) {
-                String errorMessage = MessageFormat.format("Skill with ID: {0} does not exist", skillId);
-                log.error(errorMessage);
-                throw new EntityNotFoundException(errorMessage);
-            }
+    private void validateSkillsExist(Set<SkillOfferDto> skillOffers) {
+        for (SkillOfferDto skillOffer : skillOffers) {
+            skillService.skillExistById(skillOffer.getSkillId());
         }
     }
 
-    private void validateRecommendationExists(long recommendationId) {
+    private void validateSkillOffers(Set<SkillOfferDto> skillOffers) {
+        if (skillOffers == null || skillOffers.isEmpty()) {
+            log.error("There was no skills offered");
+            throw new DataValidationException("You should chose some skills to offer");
+        }
+    }
+
+    private void validateRecommendationExist(long recommendationId) {
         if (!recommendationRepository.existsById(recommendationId)) {
             String errorMessage = MessageFormat.format("Recommendation ID: {0} does not exist", recommendationId);
             log.error(errorMessage);
-            throw new EntityNotFoundException(errorMessage);
+            throw new DataValidationException(errorMessage);
         }
     }
 }

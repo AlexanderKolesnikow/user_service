@@ -34,14 +34,17 @@ public class SkillService {
     public Skill getById(long skillId) {
         return skillRepository.findById(skillId)
                 .orElseThrow(() -> {
-                    String errorMessage = MessageFormat.format("Skill under ID:{0} not found)", skillId);
+                    String errorMessage = MessageFormat.format("Skill under ID: {0} not found)", skillId);
                     log.error(errorMessage);
                     return new EntityNotFoundException(errorMessage);
                 });
     }
 
-    @Transactional(readOnly = true)
-    public boolean existsById(long skillId) {
-        return skillRepository.existsById(skillId);
+    public void skillExistById(long skillId) {
+        if (!skillRepository.existsById(skillId)) {
+            String errorMessage = MessageFormat.format("Skill with ID: {0} does not exist", skillId);
+            log.error(errorMessage);
+            throw new EntityNotFoundException(errorMessage);
+        }
     }
 }

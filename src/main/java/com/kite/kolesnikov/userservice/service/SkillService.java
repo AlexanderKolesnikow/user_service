@@ -4,7 +4,6 @@ import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.Skill;
 import com.kite.kolesnikov.userservice.entity.recommendation.SkillOffer;
-import com.kite.kolesnikov.userservice.entity.user.User;
 import com.kite.kolesnikov.userservice.entity.user.UserSkillGuarantee;
 import com.kite.kolesnikov.userservice.mapper.SkillOfferMapper;
 import com.kite.kolesnikov.userservice.mapper.UserSkillGuaranteeMapper;
@@ -50,7 +49,7 @@ public class SkillService {
 
 
     @Transactional(readOnly = true)
-    public Skill getById(long skillId) {
+    public Skill getSkillById(long skillId) {
         return skillRepository.findById(skillId)
                 .orElseThrow(() -> {
                     String errorMessage = MessageFormat.format("Skill under ID: {0} not found)", skillId);
@@ -65,5 +64,13 @@ public class SkillService {
             log.error(errorMessage);
             throw new EntityNotFoundException(errorMessage);
         }
+    }
+
+    public boolean userHasSkill(long skillId, long userId) {
+        return skillRepository.existsByIdAndUsers_Id(skillId, userId);
+    }
+
+    public boolean guaranteeExist(long userId, long skillId, long guarantorId) {
+        return userSkillGuaranteeRepository.existsByUserIdAndSkillIdAndGuarantorId(userId, skillId, guarantorId);
     }
 }

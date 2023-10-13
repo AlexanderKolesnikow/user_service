@@ -3,12 +3,9 @@ package com.kite.kolesnikov.userservice.service;
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
 import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
-import com.kite.kolesnikov.userservice.entity.Skill;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
-import com.kite.kolesnikov.userservice.entity.user.User;
 import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
-import com.kite.kolesnikov.userservice.repository.UserSkillGuaranteeRepository;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -33,8 +29,6 @@ public class RecommendationService {
     private final RecommendationRepository recommendationRepository;
     private final RecommendationMapper recommendationMapper;
     private final SkillService skillService;
-    private final UserService userService;
-    private final UserSkillGuaranteeRepository userSkillGuaranteeRepository;
 
     @Transactional
     public RecommendationDto create(RecommendationDto recommendationDto) {
@@ -42,31 +36,28 @@ public class RecommendationService {
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
         long recommendationId = recommendationRepository.save(recommendation).getId();
-
-//        Если у получателя уже есть предложенный скилл,
-//        то автор рекомендации добавляется гарантом к этому скиллу,
-//        если еще не гарантировал этот скилл раньше для этого пользователя.
-
         processSkillOffers(recommendationDto, recommendationId);
 
+        log.info("Recommendation {} is created", recommendationId);
         return recommendationMapper.toDto(recommendation);
     }
-
 
     @Transactional
     public RecommendationDto update(RecommendationDto recommendationDto, long recommendationId) {
         validateOnUpdate(recommendationDto, recommendationId);
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
-        Recommendation save = recommendationRepository.save(recommendation);
+        recommendationRepository.save(recommendation);
         processSkillOffers(recommendationDto, recommendationId);
 
+        log.info("Recommendation {} is updated", recommendationId);
         return recommendationMapper.toDto(recommendation);
     }
 
     @Transactional
     public void delete(long recommendationId) {
         recommendationRepository.deleteById(recommendationId);
+        log.info("Recommendation {} is deleted", recommendationId);
     }
 
     @Transactional(readOnly = true)
@@ -87,36 +78,19 @@ public class RecommendationService {
 
     private void processSkillOffers(RecommendationDto recommendationDto, long recommendationId) {
         Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
+        long receiverId = recommendationDto.getReceiverId();
+        long authorId = recommendationDto.getAuthorId();
 
-        if (skillOffers != null && !skillOffers.isEmpty()) {
+        for (SkillOfferDto skillOffer : skillOffers) {
+            long skillId = skillOffer.getSkillId();
 
-            long receiverId = recommendationDto.getReceiverId();
-            long authorId = recommendationDto.getAuthorId();
-            List<Long> userSkills = getUserSkillIds(receiverId);
-
-            for (SkillOfferDto skillOffer : skillOffers) {
-                long skillId = skillOffer.getSkillId();
-
-                if (userSkills.contains(skillId) && guaranteeNotExist(receiverId, skillId, authorId)) {
-                    skillService.saveSkillGuarantee(new UserSkillGuaranteeDto(receiverId, skillId, authorId));
-                } else {
-                    skillOffer.setRecommendationId(recommendationId);
-                    skillService.saveSkillOffer(skillOffer);
-                }
+            if (skillService.userHasSkill(skillId, receiverId) && !skillService.guaranteeExist(receiverId, skillId, authorId)) {
+                skillService.saveSkillGuarantee(new UserSkillGuaranteeDto(receiverId, skillId, authorId));
+            } else {
+                skillOffer.setRecommendationId(recommendationId);
+                skillService.saveSkillOffer(skillOffer);
             }
         }
-    }
-
-    private List<Long> getUserSkillIds(long userId) {
-        User user = userService.getById(userId);
-
-        return user.getSkills().stream()
-                .map(Skill::getId)
-                .toList();
-    }
-
-    private boolean guaranteeNotExist(long userId, long skillId, long guarantorId) {
-        return !userSkillGuaranteeRepository.existsByUserIdAndSkillIdAndGuarantorId(userId, skillId, guarantorId);
     }
 
     private Recommendation getLastRecommendation(long authorId, long receiverId) {

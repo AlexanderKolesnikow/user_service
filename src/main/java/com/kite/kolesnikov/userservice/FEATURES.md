@@ -6,7 +6,7 @@
 5. POST /skill/{userId}/offered/{skillId}: Accept a skill from offers. If the skill exists, don't add. If not, obtain offers and validate, then add the skill and the recommendation authors as guarantors.
 
 # Recommendations
-1. POST /recommendation: Create a recommendation. Validate for the presence of text. Ensure no duplicate skills and that the recommendation hasn't been given to the same user in the past 6 months.
+1. POST /recommendation: Create a recommendation. Validate for the presence of text. Ensure no duplicate skills and that the recommendation hasn't been given to the same user in the past 6 months.If the recipient already has the proposed skill, then the author of the recommendation is added as a guarantor to this skill, if they haven't guaranteed this skill for this user before.
 2. PUT /recommendation/{id}: Update a recommendation. Validate for the presence of text and ensure no duplicate skills.
 3. DELETE /recommendation/{id}: Delete a recommendation and all associated proposed skills.
 4. GET /recommendation/received/{receiverId}: Access all recommendations received by a user.

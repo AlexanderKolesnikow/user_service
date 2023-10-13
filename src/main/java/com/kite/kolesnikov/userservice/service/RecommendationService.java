@@ -59,7 +59,7 @@ public class RecommendationService {
     }
 
     @Transactional
-    public void deleteWithAssociatedSkills(long recommendationId) {
+    public void delete(long recommendationId) {
         recommendationRepository.deleteById(recommendationId);
         log.info("Recommendation: {} and its associated skills are deleted", recommendationId);
     }

@@ -1,6 +1,7 @@
 package com.kite.kolesnikov.userservice.service;
 
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
+import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationGetDto;
 import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
@@ -61,17 +62,17 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllReceivedRecommendations(long receiverId, int pageNumber, int pageSize) {
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
-        Page<Recommendation> receiverRecommendations = recommendationRepository.findAllByReceiverId(receiverId, pageable);
+    public Page<RecommendationDto> getAllReceivedRecommendations(RecommendationGetDto dto) {
+        Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
+        Page<Recommendation> receiverRecommendations = recommendationRepository.findAllByReceiverId(dto.getUserId(), pageable);
 
         return receiverRecommendations.map(recommendationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllGivenRecommendations(long authorId, int pageNumber, int pageSize) {
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
-        Page<Recommendation> authorRecommendations = recommendationRepository.findAllByAuthorId(authorId, pageable);
+    public Page<RecommendationDto> getAllGivenRecommendations(RecommendationGetDto dto) {
+        Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
+        Page<Recommendation> authorRecommendations = recommendationRepository.findAllByAuthorId(dto.getUserId(), pageable);
 
         return authorRecommendations.map(recommendationMapper::toDto);
     }

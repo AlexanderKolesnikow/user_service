@@ -2,6 +2,7 @@ package com.kite.kolesnikov.userservice.service;
 
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationGetDto;
+import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationUpdateDto;
 import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -32,39 +34,41 @@ public class RecommendationService {
     private final SkillService skillService;
 
     @Transactional
-    public RecommendationDto create(RecommendationDto recommendationDto) {
-        validateOnCreate(recommendationDto);
+    public RecommendationDto create(RecommendationDto dto) {
+        validateRecommendationInterval(dto);
+        validateSkillsExist(dto.getSkillOffers());
 
-        Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
+        Recommendation recommendation = recommendationMapper.toEntity(dto);
         long recommendationId = recommendationRepository.save(recommendation).getId();
-        processSkillOffers(recommendationDto, recommendationId);
+        processSkillOffers(dto, recommendationId);
 
-        log.info("Recommendation {} is created", recommendationId);
+        log.info("Recommendation: {} is created", recommendationId);
         return recommendationMapper.toDto(recommendation);
     }
 
     @Transactional
-    public RecommendationDto update(RecommendationDto recommendationDto, long recommendationId) {
-        validateOnUpdate(recommendationDto, recommendationId);
+    public RecommendationDto update(RecommendationUpdateDto dto, long recommendationId) {
+        Recommendation recommendation = getRecommendationById(recommendationId);
+        validateUserIsAuthor(recommendation, dto.getAuthorId());
 
-        Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
+        recommendation.setContent(dto.getContent());
         recommendationRepository.save(recommendation);
-        processSkillOffers(recommendationDto, recommendationId);
 
-        log.info("Recommendation {} is updated", recommendationId);
+        log.info("Recommendation: {} is updated", recommendationId);
         return recommendationMapper.toDto(recommendation);
     }
 
     @Transactional
-    public void delete(long recommendationId) {
+    public void deleteWithAssociatedSkills(long recommendationId) {
         recommendationRepository.deleteById(recommendationId);
-        log.info("Recommendation {} is deleted", recommendationId);
+        log.info("Recommendation: {} and its associated skills are deleted", recommendationId);
     }
 
     @Transactional(readOnly = true)
     public Page<RecommendationDto> getAllReceivedRecommendations(RecommendationGetDto dto) {
         Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
-        Page<Recommendation> receiverRecommendations = recommendationRepository.findAllByReceiverId(dto.getUserId(), pageable);
+        Page<Recommendation> receiverRecommendations =
+                recommendationRepository.findAllByReceiverId(dto.getUserId(), pageable);
 
         return receiverRecommendations.map(recommendationMapper::toDto);
     }
@@ -72,9 +76,21 @@ public class RecommendationService {
     @Transactional(readOnly = true)
     public Page<RecommendationDto> getAllGivenRecommendations(RecommendationGetDto dto) {
         Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
-        Page<Recommendation> authorRecommendations = recommendationRepository.findAllByAuthorId(dto.getUserId(), pageable);
+        Page<Recommendation> authorRecommendations =
+                recommendationRepository.findAllByAuthorId(dto.getUserId(), pageable);
 
         return authorRecommendations.map(recommendationMapper::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Recommendation getRecommendationById(long recommendationId) {
+        return recommendationRepository.findById(recommendationId)
+                .orElseThrow(() -> {
+                    String errorMessage = MessageFormat.format(
+                            "Recommendation: {0} does not exist", recommendationId);
+                    log.error(errorMessage);
+                    return new EntityNotFoundException(errorMessage);
+                });
     }
 
     private void processSkillOffers(RecommendationDto recommendationDto, long recommendationId) {
@@ -85,7 +101,7 @@ public class RecommendationService {
         for (SkillOfferDto skillOffer : skillOffers) {
             long skillId = skillOffer.getSkillId();
 
-            if (skillService.userHasSkill(skillId, receiverId) && !skillService.guaranteeExist(receiverId, skillId, authorId)) {
+            if (skillService.userHaveSkill(skillId, receiverId) && !skillService.guaranteeExist(receiverId, skillId, authorId)) {
                 skillService.saveSkillGuarantee(new UserSkillGuaranteeDto(receiverId, skillId, authorId));
             } else {
                 skillOffer.setRecommendationId(recommendationId);
@@ -94,69 +110,41 @@ public class RecommendationService {
         }
     }
 
-    private Recommendation getLastRecommendation(long authorId, long receiverId) {
-        return recommendationRepository.findFirstByAuthorIdAndReceiverIdOrderByCreatedAtDesc(authorId, receiverId)
-                .orElseThrow(() -> {
-                    String errorMessage = MessageFormat.format(
-                            "User {0} hasn't given any recommendation to user {1}", authorId, receiverId);
-                    log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
-                });
-    }
-
-    private void validateOnCreate(RecommendationDto recommendationDto) {
-        validateLastUpdate(recommendationDto);
-
-        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
-        validateSkillOffers(skillOffers);
-        validateSkillsExist(skillOffers);
-    }
-
-    private void validateOnUpdate(RecommendationDto recommendationDto, long recommendationId) {
-        validateRecommendationExist(recommendationId);
-
-        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
-        if (skillOffers == null || skillOffers.isEmpty()) {
-            validateSkillOffers(skillOffers);
-        }
-    }
-
-    private void validateLastUpdate(RecommendationDto recommendationDto) {
+    private void validateRecommendationInterval(RecommendationDto recommendationDto) {
         long authorId = recommendationDto.getAuthorId();
         long receiverId = recommendationDto.getReceiverId();
-        Recommendation lastRecommendation = getLastRecommendation(authorId, receiverId);
+        Recommendation lastRecommendation = recommendationRepository.findLastByAuthorAndReceiver(authorId, receiverId);
+        if (lastRecommendation == null) {
+            return;
+        }
 
-        LocalDateTime lastUpdate = lastRecommendation.getCreatedAt();
+        LocalDateTime lastRecommendationDate = lastRecommendation.getCreatedAt();
         LocalDateTime currentDate = LocalDateTime.now();
-
-        if (lastUpdate.plusMonths(RECOMMENDATION_INTERVAL_MONTHS).isAfter(currentDate)) {
+        if (lastRecommendationDate.plusMonths(RECOMMENDATION_INTERVAL_MONTHS).isAfter(currentDate)) {
             String errorMessage = MessageFormat.format(
-                    "You've already recommended the {0} user in the last {1} months",
-                    receiverId, RECOMMENDATION_INTERVAL_MONTHS);
-            log.error("User {} already recommended user {} in the last {} months",
+                    "You've already recommended this user in the last {0} months",
+                    RECOMMENDATION_INTERVAL_MONTHS);
+
+            log.error("User: {} already recommended User: {} in the last {} months",
                     authorId, receiverId, RECOMMENDATION_INTERVAL_MONTHS);
             throw new DataValidationException(errorMessage);
         }
     }
 
-    private void validateSkillsExist(Set<SkillOfferDto> skillOffers) {
-        for (SkillOfferDto skillOffer : skillOffers) {
-            skillService.skillExistById(skillOffer.getSkillId());
+    private void validateSkillsExist(Set<SkillOfferDto> skillOfferDtos) {
+        List<Long> skillIds = skillOfferDtos.stream()
+                .map(SkillOfferDto::getSkillId)
+                .toList();
+
+        if (!skillService.skillsExistById(skillIds)) {
+            throw new DataValidationException("Invalid skills");
         }
     }
 
-    private void validateSkillOffers(Set<SkillOfferDto> skillOffers) {
-        if (skillOffers == null || skillOffers.isEmpty()) {
-            log.error("There was no skills offered");
-            throw new DataValidationException("You should chose some skills to offer");
-        }
-    }
-
-    private void validateRecommendationExist(long recommendationId) {
-        if (!recommendationRepository.existsById(recommendationId)) {
-            String errorMessage = MessageFormat.format("Recommendation ID: {0} does not exist", recommendationId);
-            log.error(errorMessage);
-            throw new DataValidationException(errorMessage);
+    private void validateUserIsAuthor(Recommendation recommendation, long userId) {
+        if (!(recommendation.getAuthor().getId() == userId)) {
+            log.error("User: {} is not the author of Recommendation: {}", userId, recommendation.getId());
+            throw new DataValidationException("You can't change this recommendation");
         }
     }
 }

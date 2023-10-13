@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.MessageFormat;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -47,7 +48,6 @@ public class SkillService {
         userSkillGuaranteeRepository.save(userSkillGuarantee);
     }
 
-
     @Transactional(readOnly = true)
     public Skill getSkillById(long skillId) {
         return skillRepository.findById(skillId)
@@ -58,19 +58,19 @@ public class SkillService {
                 });
     }
 
-    public void skillExistById(long skillId) {
-        if (!skillRepository.existsById(skillId)) {
-            String errorMessage = MessageFormat.format("Skill with ID: {0} does not exist", skillId);
-            log.error(errorMessage);
-            throw new EntityNotFoundException(errorMessage);
-        }
-    }
-
-    public boolean userHasSkill(long skillId, long userId) {
+    @Transactional(readOnly = true)
+    public boolean userHaveSkill(long skillId, long userId) {
         return skillRepository.existsByIdAndUsers_Id(skillId, userId);
     }
 
+    @Transactional(readOnly = true)
     public boolean guaranteeExist(long userId, long skillId, long guarantorId) {
         return userSkillGuaranteeRepository.existsByUserIdAndSkillIdAndGuarantorId(userId, skillId, guarantorId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean skillsExistById(List<Long> skillIds) {
+        int count = skillRepository.countExisting(skillIds);
+        return (count == skillIds.size());
     }
 }

@@ -13,24 +13,20 @@ import java.util.Optional;
 @Repository
 public interface RecommendationRepository extends JpaRepository<Recommendation, Long> {
 
-    @Query(nativeQuery = true, value = """
-            INSERT INTO recommendation (author_id, receiver_id, content)
-            VALUES (?1, ?2, ?3) returning id
-            """)
-    Long create(long authorId, long receiverId, String content);
-
-    @Query(nativeQuery = true, value = """
-            UPDATE recommendation SET content = :content, updated_at = now()
-            WHERE author_id = :authorId AND receiverId = :receiverId
-            """)
-    @Modifying
-    Recommendation update(long authorId, long receiverId, String content);
 
     Page<Recommendation> findAllByReceiverId(long receiverId, Pageable pageable);
 
     Page<Recommendation> findAllByAuthorId(long authorId, Pageable pageable);
 
-    Optional<Recommendation> findFirstByAuthorIdAndReceiverIdOrderByCreatedAtDesc(long authorId, long receiverId);
+    Optional<Recommendation> findById(long id);
+
+    @Query(nativeQuery = true, value = """
+            SELECT r.* FROM recommendation AS r
+            WHERE author_id = :authorId AND receiver_id = :receiverId
+            ORDER BY  created_at DESC
+            LIMIT 1;
+            """)
+    Recommendation findLastByAuthorAndReceiver(long authorId, long receiverId);
 
     boolean existsById(long id);
 }

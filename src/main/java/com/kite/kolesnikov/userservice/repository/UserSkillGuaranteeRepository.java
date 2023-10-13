@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserSkillGuaranteeRepository extends JpaRepository<UserSkillGuarantee, Long> {
+
     boolean existsByUserIdAndSkillIdAndGuarantorId(long userId, long skillId, long guarantorId);
 }

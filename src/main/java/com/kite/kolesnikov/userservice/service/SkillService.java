@@ -1,8 +1,15 @@
 package com.kite.kolesnikov.userservice.service;
 
+import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
+import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.Skill;
 import com.kite.kolesnikov.userservice.entity.recommendation.SkillOffer;
+import com.kite.kolesnikov.userservice.entity.user.User;
+import com.kite.kolesnikov.userservice.entity.user.UserSkillGuarantee;
+import com.kite.kolesnikov.userservice.mapper.SkillOfferMapper;
+import com.kite.kolesnikov.userservice.mapper.UserSkillGuaranteeMapper;
 import com.kite.kolesnikov.userservice.repository.SkillRepository;
+import com.kite.kolesnikov.userservice.repository.UserSkillGuaranteeRepository;
 import com.kite.kolesnikov.userservice.repository.recommendation.SkillOfferRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +23,11 @@ import java.text.MessageFormat;
 @Service
 @RequiredArgsConstructor
 public class SkillService {
-
     private final SkillRepository skillRepository;
     private final SkillOfferRepository skillOfferRepository;
+    private final SkillOfferMapper skillOfferMapper;
+    private final UserSkillGuaranteeRepository userSkillGuaranteeRepository;
+    private final UserSkillGuaranteeMapper userSkillGuaranteeMapper;
 
     @Transactional
     public void saveSkill(Skill skill) {
@@ -26,9 +35,19 @@ public class SkillService {
     }
 
     @Transactional
-    public void saveSkillOffer(SkillOffer skillOffer) {
+    public void saveSkillOffer(SkillOfferDto skillOfferDto) {
+        SkillOffer skillOffer = skillOfferMapper.toEntity(skillOfferDto);
+
         skillOfferRepository.save(skillOffer);
     }
+
+    @Transactional
+    public void saveSkillGuarantee(UserSkillGuaranteeDto userSkillGuaranteeDto) {
+        UserSkillGuarantee userSkillGuarantee = userSkillGuaranteeMapper.toEntity(userSkillGuaranteeDto);
+
+        userSkillGuaranteeRepository.save(userSkillGuarantee);
+    }
+
 
     @Transactional(readOnly = true)
     public Skill getById(long skillId) {

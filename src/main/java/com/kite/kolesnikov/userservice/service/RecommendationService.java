@@ -1,17 +1,15 @@
 package com.kite.kolesnikov.userservice.service;
 
-import com.kite.kolesnikov.userservice.dto.recommendation.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
+import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
+import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.Skill;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
-import com.kite.kolesnikov.userservice.entity.recommendation.SkillOffer;
 import com.kite.kolesnikov.userservice.entity.user.User;
-import com.kite.kolesnikov.userservice.entity.user.UserSkillGuarantee;
 import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
 import com.kite.kolesnikov.userservice.repository.UserSkillGuaranteeRepository;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
-import com.kite.kolesnikov.userservice.repository.recommendation.SkillOfferRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +31,6 @@ public class RecommendationService {
     private static final int RECOMMENDATION_INTERVAL_MONTHS = 6;
 
     private final RecommendationRepository recommendationRepository;
-    private final SkillOfferRepository skillOfferRepository;
     private final RecommendationMapper recommendationMapper;
     private final SkillService skillService;
     private final UserService userService;
@@ -41,11 +38,16 @@ public class RecommendationService {
 
     @Transactional
     public RecommendationDto create(RecommendationDto recommendationDto) {
-        validateOnCreat(recommendationDto);
+        validateOnCreate(recommendationDto);
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
-        Recommendation save = recommendationRepository.save(recommendation);
-//        processSkillOffers(save, recommendationDto.getSkillOffers());
+        long recommendationId = recommendationRepository.save(recommendation).getId();
+
+//        Если у получателя уже есть предложенный скилл,
+//        то автор рекомендации добавляется гарантом к этому скиллу,
+//        если еще не гарантировал этот скилл раньше для этого пользователя.
+
+        processSkillOffers(recommendationDto, recommendationId);
 
         return recommendationMapper.toDto(recommendation);
     }
@@ -56,8 +58,8 @@ public class RecommendationService {
         validateOnUpdate(recommendationDto, recommendationId);
 
         Recommendation recommendation = recommendationMapper.toEntity(recommendationDto);
-        recommendationRepository.save(recommendation);
-        processSkillOffers(recommendation);
+        Recommendation save = recommendationRepository.save(recommendation);
+        processSkillOffers(recommendationDto, recommendationId);
 
         return recommendationMapper.toDto(recommendation);
     }
@@ -83,38 +85,34 @@ public class RecommendationService {
         return authorRecommendations.map(recommendationMapper::toDto);
     }
 
-    private void processSkillOffers(Recommendation recommendation) {
-        long userId = recommendation.getReceiver().getId();
-        long authorId = recommendation.getAuthor().getId();
-        List<Skill> userSkills = getUserSkills(userId);
+    private void processSkillOffers(RecommendationDto recommendationDto, long recommendationId) {
+        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
 
-        for (SkillOffer skillOffer : recommendation.getSkillOffers()) {
-            long skillId = skillOffer.getSkill().getId();
+        if (skillOffers != null && !skillOffers.isEmpty()) {
 
-            if (userSkills.contains(skillOffer.getSkill()) && guaranteeNotExist(userId, skillId, authorId)) {
-                saveUserSkillGuarantee(userId, skillId, authorId);
-            } else {
-                skillOfferRepository.save(skillOffer);
+            long receiverId = recommendationDto.getReceiverId();
+            long authorId = recommendationDto.getAuthorId();
+            List<Long> userSkills = getUserSkillIds(receiverId);
+
+            for (SkillOfferDto skillOffer : skillOffers) {
+                long skillId = skillOffer.getSkillId();
+
+                if (userSkills.contains(skillId) && guaranteeNotExist(receiverId, skillId, authorId)) {
+                    skillService.saveSkillGuarantee(new UserSkillGuaranteeDto(receiverId, skillId, authorId));
+                } else {
+                    skillOffer.setRecommendationId(recommendationId);
+                    skillService.saveSkillOffer(skillOffer);
+                }
             }
         }
     }
 
-    private List<Skill> getUserSkills(long userId) {
+    private List<Long> getUserSkillIds(long userId) {
         User user = userService.getById(userId);
-        return user.getSkills();
-    }
 
-    private void saveUserSkillGuarantee(long userId, long skillId, long guarantorId) {
-        User user = userService.getById(userId);
-        Skill skill = skillService.getById(skillId);
-        User guarantor = userService.getById(guarantorId);
-
-        UserSkillGuarantee guarantee = new UserSkillGuarantee();
-        guarantee.setUser(user);
-        guarantee.setSkill(skill);
-        guarantee.setGuarantor(guarantor);
-
-        userSkillGuaranteeRepository.save(guarantee);
+        return user.getSkills().stream()
+                .map(Skill::getId)
+                .toList();
     }
 
     private boolean guaranteeNotExist(long userId, long skillId, long guarantorId) {
@@ -131,6 +129,14 @@ public class RecommendationService {
                 });
     }
 
+    private void validateOnCreate(RecommendationDto recommendationDto) {
+        validateLastUpdate(recommendationDto);
+
+        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
+        validateSkillOffers(skillOffers);
+        validateSkillsExist(skillOffers);
+    }
+
     private void validateOnUpdate(RecommendationDto recommendationDto, long recommendationId) {
         validateRecommendationExist(recommendationId);
 
@@ -140,20 +146,12 @@ public class RecommendationService {
         }
     }
 
-    private void validateOnCreat(RecommendationDto recommendationDto) {
-        validateLastUpdate(recommendationDto);
-
-        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
-        validateSkillOffers(skillOffers);
-        validateSkillsExist(skillOffers);
-    }
-
     private void validateLastUpdate(RecommendationDto recommendationDto) {
         long authorId = recommendationDto.getAuthorId();
         long receiverId = recommendationDto.getReceiverId();
         Recommendation lastRecommendation = getLastRecommendation(authorId, receiverId);
 
-        LocalDateTime lastUpdate = lastRecommendation.getUpdatedAt();
+        LocalDateTime lastUpdate = lastRecommendation.getCreatedAt();
         LocalDateTime currentDate = LocalDateTime.now();
 
         if (lastUpdate.plusMonths(RECOMMENDATION_INTERVAL_MONTHS).isAfter(currentDate)) {

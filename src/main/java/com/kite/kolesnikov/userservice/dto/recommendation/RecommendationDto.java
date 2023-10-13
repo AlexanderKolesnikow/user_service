@@ -1,5 +1,6 @@
 package com.kite.kolesnikov.userservice.dto.recommendation;
 
+import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

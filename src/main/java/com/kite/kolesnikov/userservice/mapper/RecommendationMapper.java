@@ -7,7 +7,9 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring", injectionStrategy = InjectionStrategy.FIELD, unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "spring",
+        injectionStrategy = InjectionStrategy.FIELD,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface RecommendationMapper {
 
     @Mapping(target = "authorId", source = "author.id")

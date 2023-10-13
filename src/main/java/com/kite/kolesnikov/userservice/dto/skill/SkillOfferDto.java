@@ -1,4 +1,4 @@
-package com.kite.kolesnikov.userservice.dto.recommendation;
+package com.kite.kolesnikov.userservice.dto.skill;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 public class SkillOfferDto {
     @NotNull
     private Long skillId;
+    private Long recommendationId;
 }

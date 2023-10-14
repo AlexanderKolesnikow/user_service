@@ -1,7 +1,6 @@
 package com.kite.kolesnikov.userservice.controller;
 
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
-import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationGetDto;
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationUpdateDto;
 import com.kite.kolesnikov.userservice.service.RecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,13 +12,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/recommendation")
+@RequestMapping("/api/v1/recommendations")
 @RequiredArgsConstructor
 @Tag(name = "Recommendation controller")
 public class RecommendationController {
     private final RecommendationService recommendationService;
 
-    @PostMapping("/create")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Give the recommendation to the other user")
     public RecommendationDto create(@Valid @RequestBody RecommendationDto dto) {
@@ -34,6 +33,7 @@ public class RecommendationController {
     }
 
     @DeleteMapping("/{recommendationId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete given recommendation")
     public void delete(@PathVariable long recommendationId) {
         recommendationService.delete(recommendationId);
@@ -46,8 +46,7 @@ public class RecommendationController {
             @RequestParam(defaultValue = "0") int pageNumber,
             @RequestParam(defaultValue = "10") int pageSize) {
 
-        RecommendationGetDto dto = new RecommendationGetDto(userId, pageNumber, pageSize);
-        return recommendationService.getAllReceivedRecommendations(dto);
+        return recommendationService.getAllReceivedRecommendations(userId, pageNumber, pageSize);
     }
 
     @GetMapping("/given")
@@ -57,7 +56,6 @@ public class RecommendationController {
             @RequestParam(defaultValue = "0") int pageNumber,
             @RequestParam(defaultValue = "10") int pageSize) {
 
-        RecommendationGetDto dto = new RecommendationGetDto(userId, pageNumber, pageSize);
-        return recommendationService.getAllGivenRecommendations(dto);
+        return recommendationService.getAllGivenRecommendations(userId, pageNumber, pageSize);
     }
 }

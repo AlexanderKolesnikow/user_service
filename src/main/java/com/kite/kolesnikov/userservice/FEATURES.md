@@ -1,9 +1,7 @@
 # Skills
 1. POST /skill: Create a skill. Validate for the presence of a name and its uniqueness.
-2. DELETE /skill/{id}: Delete a specific skill.
-3. GET /skill/{userId}: Retrieve all of a user's skills.
-4. GET /skill/{userId}/offered: Access all skills offered to a user by others. Returns skills and the number of offers.
-5. POST /skill/{userId}/offered/{skillId}: Accept a skill from offers. If the skill exists, don't add. If not, obtain offers and validate, then add the skill and the recommendation authors as guarantors.
+2. GET /skill/{userId}: Retrieve all of a user's skills.
+3. GET /skill/{userId}/offered: Access all skills offered to a user by others. Returns skills and the number of offers.
 
 # Recommendations
 1. POST /recommendation: Create a recommendation. Validate for the presence of text. Ensure no duplicate skills and that the recommendation hasn't been given to the same user in the past 6 months.If the recipient already has the proposed skill, then the author of the recommendation is added as a guarantor to this skill, if they haven't guaranteed this skill for this user before.

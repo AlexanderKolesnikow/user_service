@@ -1,15 +1,14 @@
 package com.kite.kolesnikov.userservice.service;
 
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
-import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationGetDto;
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationUpdateDto;
 import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
 import com.kite.kolesnikov.userservice.dto.skill.UserSkillGuaranteeDto;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
 import com.kite.kolesnikov.userservice.exception.DataValidationException;
+import com.kite.kolesnikov.userservice.exception.ResourceNotFoundException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -75,19 +74,23 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllReceivedRecommendations(RecommendationGetDto dto) {
-        Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
+    public Page<RecommendationDto> getAllReceivedRecommendations(long userId,
+                                                                 int pageNumber,
+                                                                 int pageSize) {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Recommendation> receiverRecommendations =
-                recommendationRepository.findAllByReceiverId(dto.getUserId(), pageable);
+                recommendationRepository.findAllByReceiverId(userId, pageable);
 
         return receiverRecommendations.map(recommendationMapper::toDto);
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllGivenRecommendations(RecommendationGetDto dto) {
-        Pageable pageable = PageRequest.of(dto.getPageNumber(), dto.getPageSize());
+    public Page<RecommendationDto> getAllGivenRecommendations(long userId,
+                                                              int pageNumber,
+                                                              int pageSize) {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Recommendation> authorRecommendations =
-                recommendationRepository.findAllByAuthorId(dto.getUserId(), pageable);
+                recommendationRepository.findAllByAuthorId(userId, pageable);
 
         return authorRecommendations.map(recommendationMapper::toDto);
     }
@@ -99,7 +102,7 @@ public class RecommendationService {
                     String errorMessage = MessageFormat.format(
                             "Recommendation: {0} does not exist", recommendationId);
                     log.error(errorMessage);
-                    return new EntityNotFoundException(errorMessage);
+                    return new ResourceNotFoundException(errorMessage);
                 });
     }
 

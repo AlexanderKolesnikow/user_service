@@ -1,6 +1,8 @@
 package com.kite.kolesnikov.userservice.repository;
 
 import com.kite.kolesnikov.userservice.entity.Skill;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,14 +19,7 @@ public interface SkillRepository extends JpaRepository<Skill, Long> {
     @Query(nativeQuery = true, value = "SELECT COUNT(id) FROM skill WHERE id IN (?1)")
     int countExisting(List<Long> ids);
 
-    @Query(nativeQuery = true, value = """
-            SELECT s.* FROM skill s
-            JOIN user_skill us ON us.skill_id = s.id
-            WHERE us.user_id = ?1
-            """)
-    List<Skill> findAllByUserId(long userId);
-
-    List<Skill> findByUsers_Id(long userId);
+    Page<Skill> findAllByUsersId(long userId, Pageable pageable);
 
     @Query(nativeQuery = true, value = """
             SELECT s.* FROM skill s

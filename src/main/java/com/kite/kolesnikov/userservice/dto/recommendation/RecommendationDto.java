@@ -1,6 +1,7 @@
 package com.kite.kolesnikov.userservice.dto.recommendation;
 
 import com.kite.kolesnikov.userservice.dto.skill.SkillOfferDto;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,7 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(name = "Recommendation")
 public class RecommendationDto {
     @NotNull
     private Long authorId;

@@ -93,6 +93,14 @@ public class RecommendationService {
                 });
     }
 
+    /**
+     * Processes skill offers associated with a recommendation. For each skill offer, it checks
+     * if the receiver already has the skill and whether a guarantee exists. If not, it creates
+     * a new skill guarantee; otherwise, it associates the skill offer with the recommendation.
+     *
+     * @param recommendationDto The recommendation data containing skill offers.
+     * @param recommendationId  The ID of the recommendation to which skill offers are associated.
+     */
     private void processSkillOffers(RecommendationDto recommendationDto, long recommendationId) {
         Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
         long receiverId = recommendationDto.getReceiverId();
@@ -101,7 +109,9 @@ public class RecommendationService {
         for (SkillOfferDto skillOffer : skillOffers) {
             long skillId = skillOffer.getSkillId();
 
-            if (skillService.userHaveSkill(skillId, receiverId) && !skillService.guaranteeExist(receiverId, skillId, authorId)) {
+            if (skillService.userHaveSkill(skillId, receiverId) &&
+                    !skillService.guaranteeExist(receiverId, skillId, authorId)) {
+
                 skillService.saveSkillGuarantee(new UserSkillGuaranteeDto(receiverId, skillId, authorId));
             } else {
                 skillOffer.setRecommendationId(recommendationId);

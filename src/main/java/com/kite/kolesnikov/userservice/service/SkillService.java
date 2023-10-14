@@ -38,14 +38,16 @@ public class SkillService {
     public void saveSkillOffer(SkillOfferDto skillOfferDto) {
         SkillOffer skillOffer = skillOfferMapper.toEntity(skillOfferDto);
 
-        skillOfferRepository.save(skillOffer);
+        long id = skillOfferRepository.save(skillOffer).getId();
+        log.info("Skill Guarantee: {} is created", id);
     }
 
     @Transactional
     public void saveSkillGuarantee(UserSkillGuaranteeDto userSkillGuaranteeDto) {
         UserSkillGuarantee userSkillGuarantee = userSkillGuaranteeMapper.toEntity(userSkillGuaranteeDto);
 
-        userSkillGuaranteeRepository.save(userSkillGuarantee);
+        long id = userSkillGuaranteeRepository.save(userSkillGuarantee).getId();
+        log.info("Skill Guarantee: {} is created", id);
     }
 
     @Transactional(readOnly = true)

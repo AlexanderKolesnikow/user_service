@@ -10,8 +10,9 @@ import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,13 +26,22 @@ import java.util.Set;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RecommendationService {
-    private static final int RECOMMENDATION_INTERVAL_MONTHS = 6;
-
+    private final int recommendationIntervalMonths;
     private final RecommendationRepository recommendationRepository;
     private final RecommendationMapper recommendationMapper;
     private final SkillService skillService;
+
+    @Autowired
+    public RecommendationService(@Value("${recommendation.interval.months}") int recommendationIntervalMonths,
+                                 RecommendationRepository recommendationRepository,
+                                 RecommendationMapper recommendationMapper,
+                                 SkillService skillService) {
+        this.recommendationIntervalMonths = recommendationIntervalMonths;
+        this.recommendationRepository = recommendationRepository;
+        this.recommendationMapper = recommendationMapper;
+        this.skillService = skillService;
+    }
 
     @Transactional
     public RecommendationDto create(RecommendationDto dto) {
@@ -130,13 +140,13 @@ public class RecommendationService {
 
         LocalDateTime lastRecommendationDate = lastRecommendation.getCreatedAt();
         LocalDateTime currentDate = LocalDateTime.now();
-        if (lastRecommendationDate.plusMonths(RECOMMENDATION_INTERVAL_MONTHS).isAfter(currentDate)) {
+        if (lastRecommendationDate.plusMonths(recommendationIntervalMonths).isAfter(currentDate)) {
             String errorMessage = MessageFormat.format(
                     "You've already recommended this user in the last {0} months",
-                    RECOMMENDATION_INTERVAL_MONTHS);
+                    recommendationIntervalMonths);
 
             log.error("User: {} already recommended User: {} in the last {} months",
-                    authorId, receiverId, RECOMMENDATION_INTERVAL_MONTHS);
+                    authorId, receiverId, recommendationIntervalMonths);
             throw new DataValidationException(errorMessage);
         }
     }
@@ -152,7 +162,7 @@ public class RecommendationService {
     }
 
     private void validateUserIsAuthor(Recommendation recommendation, long userId) {
-        if (!(recommendation.getAuthor().getId() == userId)) {
+        if (recommendation.getAuthor().getId() != userId) {
             log.error("User: {} is not the author of Recommendation: {}", userId, recommendation.getId());
             throw new DataValidationException("You can't change this recommendation");
         }

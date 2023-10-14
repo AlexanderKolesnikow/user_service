@@ -51,3 +51,8 @@ services:
   s3:
     bucket-name: user_bucket
     isMocked: true
+
+
+recommendation:
+  interval:
+    months: 6

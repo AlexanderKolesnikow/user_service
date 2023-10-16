@@ -18,18 +18,19 @@ import org.springframework.web.bind.annotation.*;
 public class RecommendationController {
     private final RecommendationService recommendationService;
 
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Give the recommendation to the other user")
-    public RecommendationDto create(@Valid @RequestBody RecommendationDto dto) {
-        return recommendationService.create(dto);
+    public void giveRecommendation(@Valid @RequestBody RecommendationDto dto) {
+        recommendationService.create(dto);
     }
 
     @PutMapping("/{recommendationId}")
     @Operation(summary = "Update given recommendation")
-    public RecommendationDto update(@Valid @RequestBody RecommendationUpdateDto dto,
-                                    @PathVariable long recommendationId) {
-        return recommendationService.update(dto, recommendationId);
+    public void updateContent(@Valid @RequestBody RecommendationUpdateDto dto,
+                              @PathVariable long recommendationId) {
+        recommendationService.updateContent(dto, recommendationId);
     }
 
     @DeleteMapping("/{recommendationId}")

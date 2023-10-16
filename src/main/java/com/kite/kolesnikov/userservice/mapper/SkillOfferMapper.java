@@ -15,4 +15,8 @@ public interface SkillOfferMapper {
     @Mapping(target = "skill.id", source = "skillId")
     @Mapping(target = "recommendation.id", source = "recommendationId")
     SkillOffer toEntity(SkillOfferDto skillOfferDto);
+
+    @Mapping(target = "skillId", source = "skill.id")
+    @Mapping(target = "recommendationId", source = "recommendation.id")
+    SkillOfferDto toDto(SkillOffer skillOffer);
 }

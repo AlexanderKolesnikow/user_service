@@ -26,7 +26,5 @@ public class RecommendationDto {
     @NotBlank
     @Size(max = 4096, message = "Content can't be more than 4096 characters")
     private String content;
-    @NotNull
-    @NotEmpty
     private Set<SkillOfferDto> skillOffers;
 }

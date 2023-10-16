@@ -36,6 +36,7 @@ public class RecommendationService {
                                  RecommendationRepository recommendationRepository,
                                  RecommendationMapper recommendationMapper,
                                  SkillService skillService) {
+
         this.recommendationIntervalMonths = recommendationIntervalMonths;
         this.recommendationRepository = recommendationRepository;
         this.recommendationMapper = recommendationMapper;
@@ -43,28 +44,25 @@ public class RecommendationService {
     }
 
     @Transactional
-    public RecommendationDto create(RecommendationDto dto) {
+    public void create(RecommendationDto dto) {
         validateRecommendationInterval(dto);
-        validateSkillsExist(dto.getSkillOffers());
+        validateSkills(dto.getSkillOffers());
 
-        Recommendation recommendation = recommendationMapper.toEntity(dto);
-        long recommendationId = recommendationRepository.save(recommendation).getId();
+        Recommendation entity = recommendationMapper.toEntity(dto);
+        Recommendation recommendation = recommendationRepository.save(entity);
+
+        long recommendationId = recommendation.getId();
         processSkillOffers(dto, recommendationId);
-
         log.info("Recommendation: {} is created", recommendationId);
-        return recommendationMapper.toDto(recommendation);
     }
 
     @Transactional
-    public RecommendationDto update(RecommendationUpdateDto dto, long recommendationId) {
+    public void updateContent(RecommendationUpdateDto dto, long recommendationId) {
         Recommendation recommendation = getRecommendationById(recommendationId);
         validateUserIsAuthor(recommendation, dto.getAuthorId());
 
         recommendation.setContent(dto.getContent());
-        recommendationRepository.save(recommendation);
-
         log.info("Recommendation: {} is updated", recommendationId);
-        return recommendationMapper.toDto(recommendation);
     }
 
     @Transactional
@@ -111,14 +109,17 @@ public class RecommendationService {
      * if the receiver already has the skill and whether a guarantee exists. If not, it creates
      * a new skill guarantee; otherwise, it associates the skill offer with the recommendation.
      *
-     * @param recommendationDto The recommendation data containing skill offers.
-     * @param recommendationId  The ID of the recommendation to which skill offers are associated.
+     * @param dto              The recommendation data containing skill offers.
+     * @param recommendationId The ID of the recommendation to which skill offers are associated.
      */
-    private void processSkillOffers(RecommendationDto recommendationDto, long recommendationId) {
-        Set<SkillOfferDto> skillOffers = recommendationDto.getSkillOffers();
-        long receiverId = recommendationDto.getReceiverId();
-        long authorId = recommendationDto.getAuthorId();
+    private void processSkillOffers(RecommendationDto dto, long recommendationId) {
+        Set<SkillOfferDto> skillOffers = dto.getSkillOffers();
+        if (skillOffers == null || skillOffers.isEmpty()) {
+            return;
+        }
 
+        long receiverId = dto.getReceiverId();
+        long authorId = dto.getAuthorId();
         for (SkillOfferDto skillOffer : skillOffers) {
             long skillId = skillOffer.getSkillId();
 
@@ -133,9 +134,10 @@ public class RecommendationService {
         }
     }
 
-    private void validateRecommendationInterval(RecommendationDto recommendationDto) {
-        long authorId = recommendationDto.getAuthorId();
-        long receiverId = recommendationDto.getReceiverId();
+    private void validateRecommendationInterval(RecommendationDto dto) {
+        long authorId = dto.getAuthorId();
+        long receiverId = dto.getReceiverId();
+
         Recommendation lastRecommendation = recommendationRepository.findLastByAuthorAndReceiver(authorId, receiverId);
         if (lastRecommendation == null) {
             return;
@@ -154,8 +156,12 @@ public class RecommendationService {
         }
     }
 
-    private void validateSkillsExist(Set<SkillOfferDto> skillOfferDtos) {
-        List<Long> skillIds = skillOfferDtos.stream()
+    private void validateSkills(Set<SkillOfferDto> skillOffers) {
+        if (skillOffers == null || skillOffers.isEmpty()) {
+            return;
+        }
+
+        List<Long> skillIds = skillOffers.stream()
                 .map(SkillOfferDto::getSkillId)
                 .toList();
 

@@ -41,6 +41,11 @@ public class SkillService {
     private final UserService userService;
 
     @Transactional
+    public void createSkill(SkillDto dto){
+
+    }
+
+    @Transactional
     public void saveSkillOffer(SkillOfferDto skillOfferDto) {
         SkillOffer skillOffer = skillOfferMapper.toEntity(skillOfferDto);
 
@@ -80,10 +85,7 @@ public class SkillService {
     }
 
     @Transactional(readOnly = true)
-    public Page<SkillDto> getAllUserSkills(long userId,
-                                           int pageNumber,
-                                           int pageSize) {
-
+    public Page<SkillDto> getAllUserSkills(long userId, int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Skill> userSkills = skillRepository.findAllByUsersId(userId, pageable);
 

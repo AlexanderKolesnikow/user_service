@@ -83,12 +83,12 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RecommendationDto> getAllGivenRecommendations(long userId,
+    public Page<RecommendationDto> getAllGivenRecommendations(long authorId,
                                                               int pageNumber,
                                                               int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Recommendation> authorRecommendations =
-                recommendationRepository.findAllByAuthorId(userId, pageable);
+                recommendationRepository.findAllByAuthorId(authorId, pageable);
 
         return authorRecommendations.map(recommendationMapper::toDto);
     }

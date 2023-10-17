@@ -8,6 +8,7 @@ import com.kite.kolesnikov.userservice.entity.UserSkill;
 import com.kite.kolesnikov.userservice.entity.recommendation.SkillOffer;
 import com.kite.kolesnikov.userservice.entity.user.User;
 import com.kite.kolesnikov.userservice.entity.user.UserSkillGuarantee;
+import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.exception.ResourceNotFoundException;
 import com.kite.kolesnikov.userservice.mapper.SkillMapper;
 import com.kite.kolesnikov.userservice.mapper.SkillOfferMapper;
@@ -25,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.MessageFormat;
-import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -41,8 +42,13 @@ public class SkillService {
     private final UserService userService;
 
     @Transactional
-    public void createSkill(SkillDto dto){
+    public void createSkill(SkillDto dto) {
+        String title = dto.getTitle();
+        validateSkillTitle(title);
 
+        Skill entity = skillMapper.toEntity(dto);
+        long skillId = skillRepository.save(entity).getId();
+        log.info("Skill with a title {} is created under ID: {}", title, skillId);
     }
 
     @Transactional
@@ -50,7 +56,7 @@ public class SkillService {
         SkillOffer skillOffer = skillOfferMapper.toEntity(skillOfferDto);
 
         long id = skillOfferRepository.save(skillOffer).getId();
-        log.info("Skill Guarantee: {} is created", id);
+        log.info("SkillOffer: {} is created", id);
     }
 
     @Transactional
@@ -58,7 +64,7 @@ public class SkillService {
         UserSkillGuarantee userSkillGuarantee = userSkillGuaranteeMapper.toEntity(userSkillGuaranteeDto);
 
         long id = userSkillGuaranteeRepository.save(userSkillGuarantee).getId();
-        log.info("Skill Guarantee: {} is created", id);
+        log.info("SkillGuarantee: {} is created", id);
     }
 
     @Transactional
@@ -71,16 +77,12 @@ public class SkillService {
         userSkill.setSkill(skill);
 
         userSkillRepository.save(userSkill);
-        log.info("User: {} added Skill: {} to the profile", userId, skillId);
+        log.info("User: {} have added Skill: {} to his profile", userId, skillId);
     }
 
     @Transactional
     public void deleteSkillFromUser(long userId, long skillId) {
         userSkillRepository.deleteByUserIdAndSkillId(userId, skillId);
-        if (!skillRepository.existsById(skillId)) {
-            throw new ResourceNotFoundException("Skill not found");
-        }
-
         log.info("User: {} have deleted the Skill: {} from the profile", userId, skillId);
     }
 
@@ -96,7 +98,7 @@ public class SkillService {
     public Skill getSkillById(long skillId) {
         return skillRepository.findById(skillId)
                 .orElseThrow(() -> {
-                    String errorMessage = MessageFormat.format("Skill under ID: {0} not found)", skillId);
+                    String errorMessage = MessageFormat.format("Skill {0} not found)", skillId);
                     log.error(errorMessage);
                     return new ResourceNotFoundException(errorMessage);
                 });
@@ -113,8 +115,16 @@ public class SkillService {
     }
 
     @Transactional(readOnly = true)
-    public boolean skillsExistById(List<Long> skillIds) {
+    public boolean skillsExistById(Set<Long> skillIds) {
         int count = skillRepository.countExisting(skillIds);
-        return (count == skillIds.size());
+        return count == skillIds.size();
+    }
+
+    private void validateSkillTitle(String title) {
+        if (skillRepository.existsByTitleIgnoreCase(title)) {
+            String errorMessage = MessageFormat.format("Skill with title {0} already exist)", title);
+            log.error(errorMessage);
+            throw new DataValidationException(errorMessage);
+        }
     }
 }

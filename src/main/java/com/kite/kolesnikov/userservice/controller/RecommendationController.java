@@ -12,12 +12,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/recommendations")
+@RequestMapping("/recommendations")
 @RequiredArgsConstructor
 @Tag(name = "Recommendation controller")
 public class RecommendationController {
     private final RecommendationService recommendationService;
-
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -27,7 +26,7 @@ public class RecommendationController {
     }
 
     @PutMapping("/{recommendationId}")
-    @Operation(summary = "Update given recommendation")
+    @Operation(summary = "Update given recommendation content")
     public void updateContent(@Valid @RequestBody RecommendationUpdateDto dto,
                               @PathVariable long recommendationId) {
         recommendationService.updateContent(dto, recommendationId);
@@ -38,6 +37,12 @@ public class RecommendationController {
     @Operation(summary = "Delete given recommendation")
     public void delete(@PathVariable long recommendationId) {
         recommendationService.delete(recommendationId);
+    }
+
+    @GetMapping("{recommendationId}")
+    @Operation(summary = "Get recommendation")
+    public RecommendationDto getRecommendation(@PathVariable long recommendationId) {
+        return recommendationService.getRecommendation(recommendationId);
     }
 
     @GetMapping("/received")

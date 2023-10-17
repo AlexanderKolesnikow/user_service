@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,15 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/user/{userId}/skills")
+@RequestMapping("/skills")
 @Tag(name = "Skill controller")
 public class SkillController {
     private final SkillService skillService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Adding a new skill to User profile")
-    public void addSkillToUserProfile(@PathVariable long userId,
+    @Operation(summary = "Add a new skill to repository")
+    public void addSkill(@RequestBody SkillDto skillDto) {
+        skillService.createSkill(skillDto);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Add a new skill to User profile")
+    public void addSkillToUserProfile(@RequestParam long userId,
                                       @RequestParam long skillId) {
 
         skillService.addSkillToUser(userId, skillId);
@@ -34,8 +42,8 @@ public class SkillController {
 
     @DeleteMapping("/{skillId}/delete")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Deleting a skill from User profile")
-    public void deleteSkillFromUserProfile(@PathVariable long userId,
+    @Operation(summary = "Delete a skill from User profile")
+    public void deleteSkillFromUserProfile(@RequestParam long userId,
                                            @PathVariable long skillId) {
 
         skillService.deleteSkillFromUser(userId, skillId);
@@ -43,9 +51,10 @@ public class SkillController {
 
     @GetMapping
     @Operation(summary = "Get all User skills")
-    public Page<SkillDto> getAllUserSkills(@PathVariable long userId,
+    public Page<SkillDto> getAllUserSkills(@RequestParam long userId,
                                            @RequestParam(defaultValue = "0") int pageNumber,
                                            @RequestParam(defaultValue = "10") int pageSize) {
+
         return skillService.getAllUserSkills(userId, pageNumber, pageSize);
     }
 }

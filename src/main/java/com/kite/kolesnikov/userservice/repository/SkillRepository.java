@@ -14,10 +14,10 @@ import java.util.Optional;
 @Repository
 public interface SkillRepository extends JpaRepository<Skill, Long> {
 
-    boolean existsByTitle(String title);
+    boolean existsByTitleIgnoreCase(String title);
 
     @Query(nativeQuery = true, value = "SELECT COUNT(id) FROM skill WHERE id IN (?1)")
-    int countExisting(List<Long> ids);
+    int countExisting(Iterable<Long> ids);
 
     Page<Skill> findAllByUsersId(long userId, Pageable pageable);
 

@@ -30,8 +30,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -120,7 +120,7 @@ public class RecommendationServiceTest {
 
         when(recommendationRepository.findLastByAuthorAndReceiver(anyLong(), anyLong())).thenReturn(null);
         when(recommendationRepository.save(any(Recommendation.class))).thenReturn(recommendation);
-        when(skillService.skillsExistById(anyList())).thenReturn(true);
+        when(skillService.skillsExistById(anySet())).thenReturn(true);
         when(skillService.userHaveSkill(anyLong(), anyLong())).thenReturn(false);
 
         recommendationService.create(recommendationDto);
@@ -141,7 +141,7 @@ public class RecommendationServiceTest {
 
         when(recommendationRepository.findLastByAuthorAndReceiver(anyLong(), anyLong())).thenReturn(null);
         when(recommendationRepository.save(any(Recommendation.class))).thenReturn(recommendation);
-        when(skillService.skillsExistById(anyList())).thenReturn(true);
+        when(skillService.skillsExistById(anySet())).thenReturn(true);
         when(skillService.userHaveSkill(anyLong(), anyLong())).thenReturn(true);
         when(skillService.guaranteeExist(anyLong(), anyLong(), anyLong())).thenReturn(false);
 
@@ -166,7 +166,7 @@ public class RecommendationServiceTest {
         recommendationDto.setSkillOffers(skillOffers);
 
         when(recommendationRepository.findLastByAuthorAndReceiver(anyLong(), anyLong())).thenReturn(null);
-        when(skillService.skillsExistById(anyList())).thenReturn(false);
+        when(skillService.skillsExistById(anySet())).thenReturn(false);
 
         assertThrows(DataValidationException.class, () -> recommendationService.create(recommendationDto));
     }

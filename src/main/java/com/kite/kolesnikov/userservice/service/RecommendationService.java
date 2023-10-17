@@ -20,8 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.MessageFormat;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -72,6 +72,13 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
+    public RecommendationDto getRecommendation(long recommendationId) {
+        Recommendation recommendation = getRecommendationById(recommendationId);
+
+        return recommendationMapper.toDto(recommendation);
+    }
+
+    @Transactional(readOnly = true)
     public Page<RecommendationDto> getAllReceivedRecommendations(long userId,
                                                                  int pageNumber,
                                                                  int pageSize) {
@@ -93,8 +100,8 @@ public class RecommendationService {
         return authorRecommendations.map(recommendationMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public Recommendation getRecommendationById(long recommendationId) {
+
+    private Recommendation getRecommendationById(long recommendationId) {
         return recommendationRepository.findById(recommendationId)
                 .orElseThrow(() -> {
                     String errorMessage = MessageFormat.format(
@@ -161,9 +168,9 @@ public class RecommendationService {
             return;
         }
 
-        List<Long> skillIds = skillOffers.stream()
+        Set<Long> skillIds = skillOffers.stream()
                 .map(SkillOfferDto::getSkillId)
-                .toList();
+                .collect(Collectors.toSet());
 
         if (!skillService.skillsExistById(skillIds)) {
             throw new DataValidationException("Invalid skills");

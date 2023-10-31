@@ -9,6 +9,7 @@ import com.kite.kolesnikov.userservice.entity.user.User;
 import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.exception.ResourceNotFoundException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapperImpl;
+import com.kite.kolesnikov.userservice.publisher.RecommendationEventPublisher;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,8 @@ public class RecommendationServiceTest {
     @Mock
     private RecommendationRepository recommendationRepository;
     @Mock
+    private RecommendationEventPublisher recommendationEventPublisher;
+    @Mock
     private SkillService skillService;
     @Spy
     private RecommendationMapperImpl recommendationMapper;
@@ -59,7 +62,8 @@ public class RecommendationServiceTest {
         recommendationService = new RecommendationService(6,
                 recommendationRepository,
                 recommendationMapper,
-                skillService);
+                skillService,
+                recommendationEventPublisher);
 
         skillOffer1 = SkillOfferDto.builder().skillId(1L).build();
         skillOffer2 = SkillOfferDto.builder().skillId(2L).build();

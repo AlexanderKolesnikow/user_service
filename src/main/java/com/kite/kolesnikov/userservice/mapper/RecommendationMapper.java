@@ -1,6 +1,7 @@
 package com.kite.kolesnikov.userservice.mapper;
 
 import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationDto;
+import com.kite.kolesnikov.userservice.dto.recommendation.RecommendationEventDto;
 import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
 import org.mapstruct.InjectionStrategy;
 import org.mapstruct.Mapper;
@@ -21,4 +22,8 @@ public interface RecommendationMapper {
     @Mapping(target = "receiver.id", source = "receiverId")
     @Mapping(target = "skillOffers", ignore = true)
     Recommendation toEntity(RecommendationDto recommendationDto);
+
+    @Mapping(source = "author.id", target = "authorId")
+    @Mapping(source = "receiver.id", target = "receiverId")
+    RecommendationEventDto toEventDto(Recommendation recommendation);
 }

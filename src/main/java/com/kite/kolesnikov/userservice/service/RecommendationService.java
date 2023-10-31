@@ -8,6 +8,7 @@ import com.kite.kolesnikov.userservice.entity.recommendation.Recommendation;
 import com.kite.kolesnikov.userservice.exception.DataValidationException;
 import com.kite.kolesnikov.userservice.exception.ResourceNotFoundException;
 import com.kite.kolesnikov.userservice.mapper.RecommendationMapper;
+import com.kite.kolesnikov.userservice.publisher.RecommendationEventPublisher;
 import com.kite.kolesnikov.userservice.repository.recommendation.RecommendationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,17 +31,20 @@ public class RecommendationService {
     private final RecommendationRepository recommendationRepository;
     private final RecommendationMapper recommendationMapper;
     private final SkillService skillService;
+    private final RecommendationEventPublisher recommendationEventPublisher;
 
     @Autowired
     public RecommendationService(@Value("${recommendation.interval.months}") int recommendationIntervalMonths,
                                  RecommendationRepository recommendationRepository,
                                  RecommendationMapper recommendationMapper,
-                                 SkillService skillService) {
+                                 SkillService skillService,
+                                 RecommendationEventPublisher recommendationEventPublisher) {
 
         this.recommendationIntervalMonths = recommendationIntervalMonths;
         this.recommendationRepository = recommendationRepository;
         this.recommendationMapper = recommendationMapper;
         this.skillService = skillService;
+        this.recommendationEventPublisher = recommendationEventPublisher;
     }
 
     @Transactional
@@ -53,6 +57,7 @@ public class RecommendationService {
 
         long recommendationId = recommendation.getId();
         processSkillOffers(dto, recommendationId);
+        recommendationEventPublisher.publish(recommendation);
         log.info("Recommendation: {} is created", recommendationId);
     }
 

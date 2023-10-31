@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -23,13 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Skill controller")
 public class SkillController {
     private final SkillService skillService;
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Add a new skill to repository")
-    public void addSkill(@RequestBody SkillDto skillDto) {
-        skillService.createSkill(skillDto);
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
